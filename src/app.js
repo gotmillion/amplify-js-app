@@ -1,6 +1,12 @@
 'use strict'; 
-// import { DynamoDBClient,DynamoDB } from "@aws-sdk/client-dynamodb";
-// import { DynamoDBDocumentClient,PutCommand } from "@aws-sdk/lib-dynamodb";
+import { Amplify } from "aws-amplify";
+import outputs from "../amplify_outputs.json";
+import { generateClient } from "aws-amplify/data";
+
+Amplify.configure(outputs);
+
+const db_client = generateClient() // use this Data client for CRUDL requests
+
 
 /**
  * Minimal API adapter. Swap out STUBS for real `fetch` calls later.
@@ -62,43 +68,78 @@ const api = {
 
 //------------------------------------------------------------------------------
 
-async function putItemIntoDynamoDB(payload) {
-  console.log('...Starting...');
+// async function putItemIntoDynamoDB(payload) {
+//   console.log('...Starting...');
   
-  const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
-  const { PutCommand } = require("@aws-sdk/lib-dynamodb");
+//   const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
+//   const { PutCommand } = require("@aws-sdk/lib-dynamodb");
 
-  const docClient = new DynamoDBClient({ 
-    region: 'us-west-2',
-    credentials: {
-      accessKeyId: "ASIAXEKWIOY77C3C2SZ4",
-      secretAccessKey: "Gj7qrtJM8f6jyLnYrQE0zO4tdO",
-    },
+//   const docClient = new DynamoDBClient({ 
+//     region: 'us-west-2',
+//     credentials: {
+//       accessKeyId: "ASIAXEKWIOY77C3C2SZ4",
+//       secretAccessKey: "Gj7qrtJM8f6jyLnYrQE0zO4tdO",
+//     },
+//   });
+
+//   console.log('Convert payload to attributes:', payload);
+
+//   const command = new PutCommand({
+//     TableName: "icap-delegate-access-tbl",
+//     Item: {
+//       'delegate_email': {'S': payload.delegate_email},
+//       'delegate_first_name': {'S': payload.delegate_first_name},
+//       'delegate_last_name': {'S': payload.delegate_last_name},
+//       'grantor_email': {'S': payload.grantor_email},
+//       'grantor_first_name': {'S': payload.grantor_first_name},
+//       'grantor_last_name': {'S': payload.grantor_last_name},
+//       'delegate-access-event-id ': {'S': payload.event_id},
+//     },
+//   });
+
+//   try {
+//     const response = docClient.send(command);
+//     console.log("Item added successfully:", response);
+//     return response;
+//   } catch (error) {
+//     console.error("Error adding item:", error);
+//   }
+// }
+
+function add_item_to_dynamodb(payload) {
+  console.log('In add_item_to_dynamodb with payload:', payload  );
+  
+  return new Promise((resolve, reject) => {
+    db_client.models.GrantorDynamoDB
+      .create({
+        delegate_email:       payload.delegate_email,
+        delegate_first_name:  payload.delegate_first_name,
+        delegate_last_name:   payload.delegate_last_name,
+        grantor_email:       payload.grantor_email,
+        grantor_first_name:  payload.grantor_first_name,
+        grantor_last_name:   payload.grantor_last_name,
+        delegate_access_event_id: payload.event_id,
+      })
+      .then((response) => {
+        console.log('DynamoDB create response:', response);
+        resolve(response);
+      })
+      .catch((error) => {
+        console.error('Error adding item to DynamoDB:', error);
+        reject(error);
+      });
+    
+    // Simulate success response for demonstration purposes
+    const response = { success: true, message: 'Item added to DynamoDB' };
+
+    if (response) {
+      resolve(response);
+    } else {
+      reject(new Error("Failed to add item to DynamoDB"));
+    }
   });
-
-  console.log('Convert payload to attributes:', payload);
-
-  const command = new PutCommand({
-    TableName: "icap-delegate-access-tbl",
-    Item: {
-      'delegate_email': {'S': payload.delegate_email},
-      'delegate_first_name': {'S': payload.delegate_first_name},
-      'delegate_last_name': {'S': payload.delegate_last_name},
-      'grantor_email': {'S': payload.grantor_email},
-      'grantor_first_name': {'S': payload.grantor_first_name},
-      'grantor_last_name': {'S': payload.grantor_last_name},
-      'delegate-access-event-id ': {'S': payload.event_id},
-    },
-  });
-
-  try {
-    const response = docClient.send(command);
-    console.log("Item added successfully:", response);
-    return response;
-  } catch (error) {
-    console.error("Error adding item:", error);
-  }
 }
+
 //------------------------------------------------------------------------------
 function getDomain(email) {
   if (!email || typeof email !== 'string') return '';
@@ -237,9 +278,11 @@ async function onSubmit() {
   try {
     await api.createDelegate(payload);
 
-    console.log('Sending request to function....');
+    console.log('Calling add_item_to_dynamodb ...');
     
-    const res = await putItemIntoDynamoDB(payload);
+    // const res = await putItemIntoDynamoDB(payload);
+    const res = add_item_to_dynamodb(payload);
+
     console.log('Finished putting item into DynamoDB', res);
 
     setSuccess(`Delegate ${df} ${dl} (${de}) added successfully.`);

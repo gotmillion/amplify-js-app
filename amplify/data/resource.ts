@@ -1,4 +1,5 @@
 import { type ClientSchema, a, defineData } from '@aws-amplify/backend';
+import { EVENTBUS_POLICY_SID_REQUIRED } from 'aws-cdk-lib/cx-api';
 
 /*== STEP 1 ===============================================================
 The section below creates a Todo database table with a "content" field. Try
@@ -22,6 +23,36 @@ export const data = defineData({
     defaultAuthorizationMode: 'identityPool',
   },
 });
+
+
+// attempt to create Grantor model
+
+const grantorSchema = a.schema({
+  Grantor: a
+    .model({
+      event_id: a.string(),
+      sym_id: a.string(),
+      first_name: a.string(),
+      last_name: a.string(),
+      email: a.string(),
+      grantee_id: a.string(),
+      grantee_email: a.string(),
+      grantee_first_name: a.string(),
+      grantee_last_name: a.string(),
+    })
+    .authorization((allow) => [allow.guest()]),
+});
+
+export type GrantorSchema = ClientSchema<typeof grantorSchema>;
+
+export const grantorData = defineData({
+  schema: grantorSchema,
+  authorizationModes: {
+    defaultAuthorizationMode: 'identityPool',
+  },
+});
+
+
 
 /*== STEP 2 ===============================================================
 Go to your frontend source code. From your client-side code, generate a
